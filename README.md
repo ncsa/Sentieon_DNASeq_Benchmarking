@@ -1,6 +1,6 @@
 # Sentieon_DNASeq_Benchmarking
 
-This repository contains an example script used for benchmarking. Paths and other system-specific information have been removed. 
+This repository contains an example script used for benchmarking. Full paths and other system-specific information have been removed. 
 
 This code derives from the sample DNASeq script Sentieon provides. Alterations include the addition of a separate timelog that measured the start and end of each tool. For some runs, we also included calls to our in-house memory profiler.
 
