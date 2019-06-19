@@ -1,0 +1,108 @@
+#!/bin/bash
+# *******************************************
+# Script to perform  DNA seq variant calling
+# using a single sample with fastq files
+# *******************************************
+
+
+
+# ******************************************
+# 0. input locations
+# ******************************************
+fastq_1="NA12878-L7_S7_L007_R1_001.fastq.gz"
+fastq_2="NA12878-L7_S7_L007_R2_001.fastq.gz"
+sample="NA12878_20X"
+group="NA12878_20X"
+platform="ILLUMINA"
+
+# Update with the location of the reference data files (hg38)
+fasta="Homo_sapiens_assembly38.fasta"
+dbsnp="dbsnp_138.hg38.vcf"
+known_sites="Mills_and_1000G_gold_standard.indels.hg38.vcf" 
+
+
+
+# ******************************************
+# 0. binaries location and other settings
+# ******************************************
+
+# Update with the location of the Sentieon software package and license file  
+release_dir=sentieon-genomics-201711.02 
+license=University_of_Illinois_cluster_eval.lic
+export SENTIEON_LICENSE=[license server]
+
+
+# Other settings
+nt=40 #number of threads to use in computation
+run_joint="no"
+
+# ******************************************
+# 0. Setup 
+# ******************************************
+# location for output files assumed that current working directory is where they should go
+mkdir -p ./results
+logfile=${sample}.log
+timelog=./results/timelog.txt
+exec >$logfile 2>&1
+
+FileNameBase=./results/${sample}
+
+
+
+# ******************************************
+# 1. Mapping reads with BWA-MEM, sorting
+# ******************************************
+#The results of this call are dependent on the number of threads used. To have number of threads independent results, add chunk size option -K 100000000
+START=`date +%s`
+$release_dir/bin/bwa mem -M -R "@RG\tID:$group\tSM:$sample\tPL:$platform" -K 100000000 -t $nt $fasta $fastq_1 $fastq_2 | $release_dir/bin/sentieon util sort -o ${FileNameBase}.sorted.bam -t $nt --sam2bam -i -
+END=`date +%s`
+echo BWA MEM ran for $((END - START)) seconds >> $timelog
+
+# ******************************************
+# 2. Metrics
+# ******************************************
+START=`date +%s`
+$release_dir/bin/sentieon driver -r $fasta -t $nt -i ${FileNameBase}.sorted.bam --algo MeanQualityByCycle ${FileNameBase}.MeanQualityByCycle mq_metrics.txt --algo QualDistribution ${FileNameBase}.QualDistribution 
+${FileNameBase}.qd_metrics.txt --algo GCBias --summary ${FileNameBase}.gc_summary.txt ${FileNameBase}.gc_metrics.txt --algo AlignmentStat ${FileNameBase}.aln_metrics.txt --algo InsertSizeMetricAlgo ${FileNameBase}.is_metrics.txt
+$release_dir/bin/sentieon plot metrics -o ${FileNameBase}.metrics-report.pdf gc=${FileNameBase}.gc_metrics.txt qd=${FileNameBase}.qd_metrics.txt mq=${FileNameBase}.mq_metrics.txt isize=${FileNameBase}.is_metrics.txt
+END=`date +%s`
+echo Metrics ran for $((END - START)) seconds >> $timelog
+
+# ******************************************
+# 3. Remove Duplicate Reads
+# ******************************************
+START=`date +%s`
+$release_dir/bin/sentieon driver  -t $nt -i ${FileNameBase}.sorted.bam --algo LocusCollector --fun score_info ${FileNameBase}.score.txt
+$release_dir/bin/sentieon driver  -t $nt -i ${FileNameBase}.sorted.bam --algo Dedup --rmdup --score_info ${FileNameBase}.score.txt --metrics ${FileNameBase}.dedup_metrics.txt ${FileNameBase}.deduped.bam
+END=`date +%s`
+echo Dedup ran for $((END - START)) seconds >> $timelog
+
+# ******************************************
+# 4. Indel Realigner
+# ******************************************
+START=`date +%s`
+$release_dir/bin/sentieon driver -r $fasta  -t $nt -i ${FileNameBase}.deduped.bam --algo Realigner -k $known_sites ${FileNameBase}.realigned.bam
+END=`date +%s`
+echo Realigner ran for $((END - START)) seconds >> $timelog
+
+# ******************************************
+# 5. Base recalibration
+# ******************************************
+START=`date +%s`
+$release_dir/bin/sentieon driver -r $fasta -t $nt -i ${FileNameBase}.realigned.bam --algo QualCal -k $dbsnp -k $known_sites ${FileNameBase}.recal_data.table
+$release_dir/bin/sentieon driver -r $fasta -t $nt -i ${FileNameBase}.realigned.bam -q ${FileNameBase}.recal_data.table --algo QualCal -k $dbsnp -k $known_sites ${FileNameBase}.recal_data.table.post
+$release_dir/bin/sentieon driver -t $nt --algo QualCal --plot --before ${FileNameBase}.recal_data.table --after ${FileNameBase}.recal_data.table.post ${FileNameBase}.recal.csv
+$release_dir/bin/sentieon plot bqsr -o ${FileNameBase}.recal_plots.pdf ${FileNameBase}.recal.csv
+END=`date +%s`
+echo Base Recalibration ran for $((END - START)) seconds >> $timelog
+
+# ******************************************
+# 6b. HC Variant caller
+# ******************************************
+START=`date +%s`
+$release_dir/bin/sentieon driver -r $fasta -t $nt -i ${FileNameBase}.realigned.bam -q ${FileNameBase}.recal_data.table --algo Haplotyper -d $dbsnp --emit_conf=10 --call_conf=30 --prune_factor=2 ${FileNameBase}.output-hc.vcf.gz
+END=`date +%s`
+echo Haplotyper ran for $((END - START)) seconds >> $timelog
+
+
+
