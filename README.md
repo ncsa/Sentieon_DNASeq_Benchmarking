@@ -1,0 +1,2 @@
+# Sentieon_DNASeq_Benchmarking
+Benchmarking scripts
