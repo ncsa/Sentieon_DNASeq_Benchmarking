@@ -1,4 +1,10 @@
-# Sentieon_DNASeq_Benchmarking
+# Overview
+
+As reliable, efficient genome sequencing becomes ubiquitous, the need for similarly reliable and efficient variant calling becomes increasingly important. The Genome Analysis Toolkit (GATK), maintained by the Broad Institute, is currently the widely accepted standard for variant calling software. However, alternative solutions may provide faster variant calling without sacrificing accuracy. One such alternative is Sentieon DNASeq, a toolkit analogous to GATK but built on a highly optimized backend. We conducted an independent evaluation of the DNASeq single-sample variant calling pipeline in comparison to that of GATK. Our results support the near-identical accuracy of the two software packages, showcase optimal scalability and great speed from Sentieon, and describe computational performance considerations for the deployment of DNASeq.
+
+Please see our full pre-print manuscript for further details: [Computational performance and accuracy of Sentieon DNASeq variant calling workflow](https://www.biorxiv.org/content/10.1101/396325v1)
+
+# Sentieon DNASeq Benchmarking
 
 This repository contains an example script used for benchmarking. Full paths and other system-specific information have been removed. 
 
