@@ -8,13 +8,13 @@ The code remained consistent for each run except for changes to 1) the number of
 
 # Generating synthetic reads and Golden VCF
 
-We used the NEAT package (see manuscript references) to generate synthetic data and an accompanying Golden VCF with the following command.
+We used the [NEAT package](https://github.com/zstephens/neat-genreads) (see manuscript references) to generate synthetic data and an accompanying Golden VCF with the following command.
 
 *python genreads.py -r hg38_chr20_21_22.fa -R 100 --pe 300 30 -M 0.001 -E 0.001 --bam --vcf*
 
 # Accuracy comparisons
 
-We used the vcf-compare packages associated with NEAT (see manuscript references) to compare GATK and Sentieon with each other and various truth sets using the following command.
+We used the vcf-compare packages associated with [NEAT](https://github.com/zstephens/neat-genreads) to compare GATK and Sentieon with each other and various truth sets using the following command.
 
 *python vcf-compare.py -r hg38.fa -g golden_truth.vcf -w workflow.vcf --vcf-out -o output_directory \
                       -t ConfidentRegions.bed -T 0 --incl-homs --incl-fail --no-plot*
